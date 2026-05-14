@@ -3,24 +3,21 @@ import logging
 import os
 import re
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 from core.prompts import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
-_model: genai.GenerativeModel | None = None
+_client: genai.Client | None = None
 
 
-def get_model() -> genai.GenerativeModel:
-    global _model
-    if _model is None:
-        genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-        _model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash-latest",
-            system_instruction=SYSTEM_PROMPT,
-        )
-    return _model
+def get_client() -> genai.Client:
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+    return _client
 
 
 def _extract_json(text: str) -> dict:
@@ -31,11 +28,19 @@ def _extract_json(text: str) -> dict:
 
 
 async def generate_presentation(user_prompt: str, retrying: bool = False) -> dict:
-    model = get_model()
+    client = get_client()
 
     strict_suffix = "\n\nIMPORTANT: Return ONLY valid JSON. No markdown, no explanation." if retrying else ""
 
-    response = await model.generate_content_async(user_prompt + strict_suffix)
+    response = await client.aio.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=user_prompt + strict_suffix,
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            max_output_tokens=4096,
+        ),
+    )
+
     raw = response.text
     logger.info("Gemini raw response (first 200 chars): %s", raw[:200])
 
