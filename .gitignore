@@ -1,0 +1,9 @@
+.env
+__pycache__/
+*.py[cod]
+*.pptx
+.DS_Store
+venv/
+.venv/
+*.egg-info/
+dist/
