@@ -1,8 +1,12 @@
+import logging
+
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import BufferedInputFile, CallbackQuery, Message
 
 from bot.i18n import load, t
+
+logger = logging.getLogger(__name__)
 from bot.keyboards.inline import (
     back_to_menu_keyboard,
     grade_keyboard,
@@ -121,7 +125,8 @@ async def cb_tone(call: CallbackQuery, state: FSMContext) -> None:
             caption=strings["done"],
             reply_markup=back_to_menu_keyboard(strings),
         )
-    except Exception:
+    except Exception as e:
+        logger.exception("Failed to generate presentation: %s", e)
         await status_msg.edit_text(
             strings["error"],
             reply_markup=back_to_menu_keyboard(strings),
