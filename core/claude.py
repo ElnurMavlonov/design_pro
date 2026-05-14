@@ -33,7 +33,7 @@ async def generate_presentation(user_prompt: str, retrying: bool = False) -> dic
     strict_suffix = "\n\nIMPORTANT: Return ONLY valid JSON. No markdown, no explanation." if retrying else ""
 
     response = await client.aio.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-2.0-flash-lite",
         contents=user_prompt + strict_suffix,
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
