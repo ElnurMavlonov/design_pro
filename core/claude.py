@@ -3,20 +3,19 @@ import logging
 import os
 import re
 
-from google import genai
-from google.genai import types
+from groq import AsyncGroq
 
 from core.prompts import SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
-_client: genai.Client | None = None
+_client: AsyncGroq | None = None
 
 
-def get_client() -> genai.Client:
+def get_client() -> AsyncGroq:
     global _client
     if _client is None:
-        _client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+        _client = AsyncGroq(api_key=os.environ["GROQ_API_KEY"])
     return _client
 
 
@@ -32,17 +31,18 @@ async def generate_presentation(user_prompt: str, retrying: bool = False) -> dic
 
     strict_suffix = "\n\nIMPORTANT: Return ONLY valid JSON. No markdown, no explanation." if retrying else ""
 
-    response = await client.aio.models.generate_content(
-        model="gemini-3.0-flash",
-        contents=user_prompt + strict_suffix,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            max_output_tokens=4096,
-        ),
+    response = await client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt + strict_suffix},
+        ],
+        max_tokens=4096,
+        temperature=0.7,
     )
 
-    raw = response.text
-    logger.info("Gemini raw response (first 200 chars): %s", raw[:200])
+    raw = response.choices[0].message.content
+    logger.info("Groq raw response (first 200 chars): %s", raw[:200])
 
     try:
         data = _extract_json(raw)
@@ -50,7 +50,7 @@ async def generate_presentation(user_prompt: str, retrying: bool = False) -> dic
         logger.error("JSON parse failed: %s | raw: %s", exc, raw[:500])
         if not retrying:
             return await generate_presentation(user_prompt, retrying=True)
-        raise ValueError(f"Gemini returned invalid JSON after retry: {exc}") from exc
+        raise ValueError(f"Groq returned invalid JSON after retry: {exc}") from exc
 
     if "slides" not in data or not isinstance(data["slides"], list):
         raise ValueError("Response missing 'slides' array")
