@@ -51,7 +51,13 @@ async def main() -> None:
         app = web.Application()
         SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=webhook_path)
         setup_application(app, dp, bot=bot)
-        web.run_app(app, host="0.0.0.0", port=port)
+
+        runner = web.AppRunner(app)
+        await runner.setup()
+        site = web.TCPSite(runner, host="0.0.0.0", port=port)
+        await site.start()
+        logger.info("Webhook server running on port %d", port)
+        await asyncio.Event().wait()  # run forever
     else:
         # Local development — long polling
         logger.info("Starting polling (local dev mode)")
